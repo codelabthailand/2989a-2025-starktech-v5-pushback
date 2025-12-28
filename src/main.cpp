@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------------*/
 /*                                                                            */
 /*    Module:       main.cpp                                                  */
-/*    Author:       ampstark                                                  */
+/*    Author:       GandamStark                                               */
 /*    Created:      12/27/2025                                                */
 /*    Description:  V5 Competition - Push Back 2025-2026                      */
 /*                                                                            */
@@ -53,6 +53,28 @@ gps GPS18 = gps(PORT18, -304.80, 88.90, mm, -90);
 // HELPER FUNCTIONS
 // ============================================================================
 
+// Reset Motor คือการ reset ตัว encoder ของ motor ให้เป็นค่า 0
+void rstm()
+{
+  // Lf.setPosition(0, degrees);
+  // Lm.setPosition(0, degrees);
+  // Lb.setPosition(0, degrees);
+  // Rf.setPosition(0, degrees);
+  // Rm.setPosition(0, degrees);
+  // Rb.setPosition(0, degrees);
+
+  // Group Motor ก็มีคำสั่ง setPosition เหมือนกันนะครับ
+  LM.setPosition(0, degrees);
+  RM.setPosition(0, degrees);
+  LM.stop();
+  RM.stop();
+
+  // ต้องมี wait เพราะต้องรอให้ motor หยุดหมุนจริงๆ ซะก่อน
+  // ซึ่งถ้าไม่ wait เลย มอเตอร์จริงอาจยังไม่หยุดหมุนจริง จะรอมากกว่านี้ก็ได้
+  wait(200, msec);
+}
+
+// สั่งให้ Motor หมุน -> robot เคลื่อนที่ตาม speed แต่่ไม่มีหยุด
 void move(float l, float r)
 {
   if (l == 0)
@@ -74,17 +96,12 @@ void move(float l, float r)
   }
 }
 
-void rstm()
+void moveDeg(int SpeedL, int SpeedR, float deg)
 {
-  Lf.setPosition(0, degrees);
-  Lm.setPosition(0, degrees);
-  Lb.setPosition(0, degrees);
-  Rf.setPosition(0, degrees);
-  Rm.setPosition(0, degrees);
-  Rb.setPosition(0, degrees);
-  LM.stop();
-  RM.stop();
-  wait(200, msec);
+  while ((abs(Lm.position(degrees)) + abs(Rm.position(degrees))) / 2 < deg)
+  {
+    move(-SpeedL, -SpeedR);
+  }
 }
 
 void take(int outSpeed, int midSpeed, int inSpeed)
@@ -94,12 +111,50 @@ void take(int outSpeed, int midSpeed, int inSpeed)
   mid.spin(forward, midSpeed, percent);
 }
 
-void moveDeg(int SpeedL, int SpeedR, float deg)
+// ฟังก์ชั่นคำนวนการหมุน โดยใช้ GPS Heading -> Target Heading
+// turnToTargetHeading(ทิศที่ต้องการ, ความเร็ว);
+void turnToTargetHeading(int targetHeading, int speed)
 {
-  while ((abs(Lm.position(degrees)) + abs(Rm.position(degrees))) / 2 < deg)
+  double error;
+  while (true)
   {
-    move(-SpeedL, -SpeedR);
+    error = targetHeading - GPS18.heading();
+
+    // แก้ปัญหาข้าม 0 องศา จะได้หมุนไปในทิศทางที่ใกล้ที่สุดได้ โดยยึดจากครึ่งนึงของวงกลม
+    // ก็คือ 180 ถึงจะรู้ว่าควรจะหมุนซ้าย หรือหมุนขวาดี
+    if (error > 180)
+    {
+      error -= 360;
+    }
+    else if (error < -180)
+    {
+      error += 360;
+    }
+
+    // เช็คว่าถึงเป้าหรือยัง (+-2 องศา = ถึงเป้าตามที่คุยกันไว้)
+    if (abs(error) < 2)
+    {
+      break;
+    }
+
+    // คำสั่งให้หมุน
+    if (error > 0)
+    {
+      // LM > RM = หมุนขวา
+      move(speed, -speed);
+    }
+    else
+    {
+      // LM < RM = หมุนซ้าย
+      move(-speed, speed);
+    }
+
+    // มี wait เพราะต้องสร้าง delay ให้ GPS อ่านค่าหลังจากสั่งหมุน
+    // ถ้าไม่งั้น มันจะเช็คไวมาก เพราะคำสั่งหมุน มันจะหมุน แล้ววนูปต่อเลย ไม่รอให้หมุนเสร็จ
+    wait(20, msec);
   }
+
+  move(0, 0); // หยุดเดิน
 }
 
 void acc(int topSpeed)
