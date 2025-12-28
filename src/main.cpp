@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------------*/
 /*                                                                            */
 /*    Module:       main.cpp                                                  */
-/*    Author:       Auchai                                               */
+/*    Author:       Vavin                                               */
 /*    Created:      12/27/2025                                                */
 /*    Description:  V5 Competition - Push Back 2025-2026                      */
 /*                                                                            */
